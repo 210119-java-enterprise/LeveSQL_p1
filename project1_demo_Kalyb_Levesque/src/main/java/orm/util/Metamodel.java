@@ -1,21 +1,42 @@
 package orm.util;
 
 import orm.annotations.Column;
+import orm.annotations.Entity;
 import orm.annotations.Id;
+import orm.annotations.JoinColumn;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class Metamodel<T> {
     private Class <T> clazz;
+    private IdField primaryKeyField;
+    private List<ColumnField> columnFields;
+    private List<ForeignKeyField> foreignKeyFields;
 
     public static <T> Metamodel<T> of(Class<T> clazz){
-        return new Metamodel<>(clazz);
+        if (clazz.getAnnotation(Entity.class) == null) {
+            throw new IllegalStateException("Cannot create Metamodel object! Provided class, " + clazz.getName()
+                    + "is not annotated with @Entity");
+        }
+            return new Metamodel<>(clazz);
+
     }
 
     public Metamodel(Class<T> clazz){
         this.clazz = clazz;
+        this.columnFields = new LinkedList<>();
+        this.foreignKeyFields = new LinkedList<>();
+    }
+
+    public String getClassName(){
+        return clazz.getName();
+    }
+
+    public String getSimpleClassName(){
+        return clazz.getSimpleName();
     }
 
     public IdField getPrimaryKey(){
@@ -44,4 +65,17 @@ public class Metamodel<T> {
         }
         return columnFields;
     }
+
+    public List<ForeignKeyField> getForeignKeys(){
+        List<ForeignKeyField> foreignKeyFields = new ArrayList<>();
+        Field[] fields = clazz.getDeclaredFields();
+        for(Field field: fields){
+            JoinColumn column = field.getAnnotation(JoinColumn.class);
+            if(column != null){
+                foreignKeyFields.add(new ForeignKeyField(field));
+            }
+        }
+        return foreignKeyFields;
+    }
+
 }
