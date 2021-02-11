@@ -1,8 +1,11 @@
 package orm.model;
 
 import orm.annotations.Column;
+import orm.annotations.Entity;
 import orm.annotations.Id;
 
+
+@Entity(tableName = "proj1_test")
 public class User {
 
     @Id(columnName = "id")
