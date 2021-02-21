@@ -4,6 +4,7 @@ import orm.annotations.Column;
 import orm.annotations.Entity;
 import orm.annotations.Id;
 import orm.annotations.JoinColumn;
+import orm.exceptions.DeleteException;
 import orm.exceptions.InsertionException;
 import orm.exceptions.SelectException;
 import orm.exceptions.WhereClauseException;
@@ -328,6 +329,29 @@ public class Metamodel<T> {
         pstmt = conn.prepareStatement(pstmtString.substring(0, pstmtString.length()-2));
         return pstmt.executeUpdate();
     }
+
+    /**
+     * start with the basic layout of the delete command  where is in another function so this will default
+     * to delete all
+     * @return return the metamodel with the below updated information
+     * @throws SQLException incase something wrong happens in the prepared statement
+     */
+    public Metamodel<T> deletion() throws SQLException {
+        pstmt = null;
+        resultFields.clear();
+        Entity entity = clazz.getAnnotation(Entity.class);
+        String entityName = entity.tableName();
+        pstmt = conn.prepareStatement("delete from " + entityName);
+
+        return this;
+    }
+    public int validateAndRunDeletion() throws DeleteException, SQLException {
+        if(!pstmt.toString().startsWith("delete")){
+            throw new DeleteException("to run the delete command you must have delete first in the statement");
+        }
+        return pstmt.executeUpdate();
+    }
+
     public IdField getPrimaryKey(){
         Field[] fields = clazz.getDeclaredFields();
         for(Field field: fields){
@@ -366,7 +390,6 @@ public class Metamodel<T> {
         }
         return foreignKeyFields;
     }
-
 
     private Method getMethodUsingFieldName(String fieldName){
         // go through all the methods in the model and try to find one that has

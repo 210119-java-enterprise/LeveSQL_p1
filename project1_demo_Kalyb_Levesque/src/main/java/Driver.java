@@ -1,3 +1,4 @@
+import orm.exceptions.DeleteException;
 import orm.exceptions.InsertionException;
 import orm.exceptions.SelectException;
 import orm.exceptions.WhereClauseException;
@@ -49,10 +50,14 @@ public class Driver {
         } catch (InsertionException e) {
             e.printStackTrace();
         }
-
         try {
-            resultSelection = user.selection().initialWhere("first_name", WhereConditions.EQUALS, "testing").validateAndRunSelection();
-        } catch (SelectException | WhereClauseException e) {
+            user.deletion().initialWhere("first_name",WhereConditions.EQUALS, "testing").validateAndRunDeletion();
+        } catch (WhereClauseException | DeleteException e) {
+            e.printStackTrace();
+        }
+        try {
+            resultSelection = user.selection().validateAndRunSelection();
+        } catch (SelectException e) {
             e.printStackTrace();
         }
 
