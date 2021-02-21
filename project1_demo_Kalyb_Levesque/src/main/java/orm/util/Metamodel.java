@@ -4,6 +4,7 @@ import orm.annotations.Column;
 import orm.annotations.Entity;
 import orm.annotations.Id;
 import orm.annotations.JoinColumn;
+import orm.exceptions.InsertionException;
 import orm.exceptions.SelectException;
 import orm.exceptions.WhereClauseException;
 
@@ -219,7 +220,6 @@ public class Metamodel<T> {
         }
         return this;
     }
-
     /**
      * add the and logic at the end of the statement if there is a where clause already inside the statement
      * @return returns the object
@@ -234,7 +234,6 @@ public class Metamodel<T> {
        pstmt = conn.prepareStatement(pstmt.toString() + " and ");
         return where(col, condition,compareWith);
     }
-
     public Metamodel<T> or(String col, WhereConditions condition, String compareWith) throws SQLException, WhereClauseException {
         if(!pstmt.toString().contains("where")){
             throw new WhereClauseException("cannot call and if no where clause");
@@ -243,6 +242,92 @@ public class Metamodel<T> {
         return where(col,condition, compareWith);
     }
 
+    public Metamodel<T> insertion(String... columns){
+        pstmt = null;
+        resultFields.clear();
+
+        try{
+            Entity entity = clazz.getAnnotation(Entity.class);
+            String entityName = entity.tableName();
+            ArrayList<String> columnsFilter = new ArrayList<>();
+            StringBuilder record = new StringBuilder();
+            String delimeter;
+
+            for(int i = 0; i < columns.length; i++){
+                for(ColumnField col: columnFields){
+                    if(col.getColumnName().equals(columns[i])){
+                        columnsFilter.add(columns[i]);
+                        resultFields.add(col);
+                    }
+                }
+            }
+
+            for(int i = 0; i < columnsFilter.size(); i++){
+                delimeter = (i <columnsFilter.size()-1) ? ", " : "";
+
+                record.append(columnsFilter.get(i) + delimeter);
+
+            }
+
+            pstmt = conn.prepareStatement("insert into " + entityName + "("
+                        + record.toString() + ") values ");
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return this;
+    }
+    public Metamodel<T> insertionValues(String... recordValues) throws InsertionException {
+        if(recordValues.length != resultFields.size()){
+            throw new InsertionException();
+        }
+
+        if(!pstmt.toString().contains("insert")){
+            throw new InsertionException("There is no insert statement in the prepared statement!!");
+        }
+
+        StringBuilder record = new StringBuilder();
+        String delimeter;
+
+        for(int i = 0; i < recordValues.length; i++){
+            delimeter = (i < recordValues.length-1) ? ", " : "";
+            record.append("?" + delimeter);
+
+        }
+
+        try {
+            String temp = pstmt.toString();
+            pstmt = conn.prepareStatement(temp + "(" + record.toString() + "), ");
+
+            // dynamically fill in all the ? with the correct value
+            for(int i = 0; i < resultFields.size();i++){
+                Class<?> type = resultFields.get(i).getType();
+                if(type == String.class) {
+                    pstmt.setString(i + 1, recordValues[i]);
+                } else if(type == int.class){
+                    pstmt.setInt(i + 1,Integer.parseInt(recordValues[i]));
+                }else if(type == Double.class){
+                    pstmt.setDouble(i + 1,Double.parseDouble(recordValues[i]));
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return this;
+    }
+
+    public int validateAndRunInsertion() throws InsertionException, SQLException {
+        if(!pstmt.toString().startsWith("insert")){
+            throw new InsertionException("validation and running happends after the insert command!!");
+        }
+        String pstmtString = pstmt.toString();
+        // just wanna see whats in there
+        System.out.println(pstmtString);
+        pstmt = conn.prepareStatement(pstmtString.substring(0, pstmtString.length()-2));
+        return pstmt.executeUpdate();
+    }
     public IdField getPrimaryKey(){
         Field[] fields = clazz.getDeclaredFields();
         for(Field field: fields){

@@ -1,3 +1,4 @@
+import orm.exceptions.InsertionException;
 import orm.exceptions.SelectException;
 import orm.exceptions.WhereClauseException;
 import orm.model.User;
@@ -42,15 +43,28 @@ public class Driver {
         Metamodel<User> user = new Metamodel<>(User.class, connectionPool);
         ArrayList resultSelection = new ArrayList<>();
 
-        // try to run the select statement with the strings passed in for column names
+
         try {
-            resultSelection = user
-                    .selection().initialWhere("first_name",WhereConditions.EQUALS,"blah")
-                    .or("last_name",WhereConditions.EQUALS,"levesque")
-                    .validateAndRunSelection();
+            user.insertion("first_name", "last_name").insertionValues("testing","123").validateAndRunInsertion();
+        } catch (InsertionException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            resultSelection = user.selection().initialWhere("first_name", WhereConditions.EQUALS, "testing").validateAndRunSelection();
         } catch (SelectException | WhereClauseException e) {
             e.printStackTrace();
         }
+
+        // try to run the select statement with the strings passed in for column names
+//        try {
+//            resultSelection = user
+//                    .selection().initialWhere("first_name",WhereConditions.EQUALS,"blah")
+//                    .or("last_name",WhereConditions.EQUALS,"levesque")
+//                    .validateAndRunSelection();
+//        } catch (SelectException | WhereClauseException e) {
+//            e.printStackTrace();
+//        }
         // get a reference to the user object model
         // then when you remove the object from the list of objects you can assign the
         // reference and use it to access the get methods
