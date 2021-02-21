@@ -44,7 +44,10 @@ public class Driver {
 
         // try to run the select statement with the strings passed in for column names
         try {
-            resultSelection = user.selection("last_name").where("first_name",WhereConditions.EQUALS,"","Kalyb").validateAndRunSelection();
+            resultSelection = user
+                    .selection().initialWhere("first_name",WhereConditions.EQUALS,"blah")
+                    .or("last_name",WhereConditions.EQUALS,"levesque")
+                    .validateAndRunSelection();
         } catch (SelectException | WhereClauseException e) {
             e.printStackTrace();
         }
@@ -56,8 +59,6 @@ public class Driver {
         for(int i = 0; i < resultSelection.size(); i++){
             u = (User) resultSelection.remove(i);
             System.out.println(u);
-        //    System.out.println(u.getEmailAddress());
-        //    System.out.println(u.getLastName() + " " + u.getId());
         }
     }
 }

@@ -14,6 +14,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
 
 public class Metamodel<T> {
     private Class <T> clazz;
@@ -123,7 +124,7 @@ public class Metamodel<T> {
         return results;
     }
 
-    public Metamodel<T> where(String col, WhereConditions condition, String logic, String compareWith) throws SQLException, WhereClauseException {
+    public Metamodel<T> initialWhere(String col, WhereConditions condition, String compareWith) throws WhereClauseException, SQLException {
 
         /*
             do some validation before starting the actual where clause
@@ -133,9 +134,13 @@ public class Metamodel<T> {
         }
         // added a where to the prepared statement
         pstmt = conn.prepareStatement(pstmt.toString() + " where ");
-        ColumnField column = null;
+        // the initial where clause needs no additional logic
+        return where(col,condition,compareWith);
+    }
+    public Metamodel<T> where(String col, WhereConditions condition, String compareWith) throws SQLException, WhereClauseException {
+         ColumnField column = null;
 
-        String ps = pstmt.toString() + logic;
+        String ps = pstmt.toString();
 
         switch (condition){
             case EQUALS:
@@ -215,6 +220,28 @@ public class Metamodel<T> {
         return this;
     }
 
+    /**
+     * add the and logic at the end of the statement if there is a where clause already inside the statement
+     * @return returns the object
+     * @throws WhereClauseException  in case the where clause has an issue
+     * @throws SQLException because i am reassigning the prepared statement this is needed
+     */
+    public Metamodel<T> and(String col, WhereConditions condition, String compareWith) throws WhereClauseException, SQLException {
+       if(!pstmt.toString().contains("where")){
+           throw new WhereClauseException("cannot call and if no where clause");
+       }
+       //
+       pstmt = conn.prepareStatement(pstmt.toString() + " and ");
+        return where(col, condition,compareWith);
+    }
+
+    public Metamodel<T> or(String col, WhereConditions condition, String compareWith) throws SQLException, WhereClauseException {
+        if(!pstmt.toString().contains("where")){
+            throw new WhereClauseException("cannot call and if no where clause");
+        }
+        pstmt = conn.prepareStatement(pstmt.toString() + " or ");
+        return where(col,condition, compareWith);
+    }
 
     public IdField getPrimaryKey(){
         Field[] fields = clazz.getDeclaredFields();
