@@ -21,12 +21,12 @@ public class ConnectionPooling implements ConnectionPool{
 
     public ConnectionPooling(Properties properties) {
         props = properties;
-        try {
-            Create();
-        } catch (SQLException e) {
-            System.out.println("Something happened trying to Create!!");
-            e.printStackTrace();
-        }
+//        try {
+//            Create();
+//        } catch (SQLException e) {
+//            System.out.println("Something happened trying to Create!!");
+//            e.printStackTrace();
+//        }
     }
     public ConnectionPooling(String url, String user, String password, List<Connection> connectionPool) {
         this.url = url;

@@ -22,31 +22,26 @@ public class Metamodel<T> {
 
     private Method[] methods; // used to get the methods of the model class.  used so it can dynamically use the set methods! possibly the get methods later
     private ArrayList<ColumnField> resultFields; // planning to use this to hold result set of a SELECT
-    private PreparedStatement pstmt;
+    private PreparedStatement pstmt;  // made here so i dont have to pass it in as a varaible every time
     private Connection conn; // pass in the connection to the metamodel class
 
-    public static <T> Metamodel<T> of(Class<T> clazz){
-        if (clazz.getAnnotation(Entity.class) == null) {
-            throw new IllegalStateException("Cannot create Metamodel object! Provided class, " + clazz.getName()
-                    + "is not annotated with @Entity");
-        }
-            return new Metamodel<>(clazz);
+//    public static <T> Metamodel<T> of(Class<T> clazz){
+//        if (clazz.getAnnotation(Entity.class) == null) {
+//            throw new IllegalStateException("Cannot create Metamodel object! Provided class, " + clazz.getName()
+//                    + "is not annotated with @Entity");
+//        }
+//            return new Metamodel<>(clazz);
+//
+//    }
 
-    }
-
-    public Metamodel(Class<T> clazz){
+    public Metamodel(Class<T> clazz,ConnectionPooling connectionPool){
         this.clazz = clazz;
         this.columnFields = new LinkedList<>();
+        this.resultFields = new ArrayList<>();
         getColumns();
         this.foreignKeyFields = new LinkedList<>();
         this.methods = clazz.getMethods();
-
-        try {
-            this.conn = ConnectionPooling.createConnection();
-        } catch (SQLException e) {
-            System.out.println("Something happened in the metaModel setting the connection");
-            e.printStackTrace();
-        }
+        this.conn = connectionPool.getConnection();
     }
 
     public String getClassName(){
@@ -74,9 +69,30 @@ public class Metamodel<T> {
             }
 
             StringBuilder placeholders = new StringBuilder();
-            String delim;
+            String delimeter;
 
+            // check the columns passed in!
+            for(int i = 0; i < columns.length; i++){
+                // if it is not the last one of the passed in strings add a comma and add it to the
+                // list of columns that will be searched for
+                if(i < columns.length-1){
+                    delimeter = ", ";
+                } else{
+                    delimeter = ""; // not sure if its needed but might so that problems dont happen later
+                }
 
+                // find the column field that is equal to the string passed in
+                for(ColumnField col: columnFields){
+                    if(col.getColumnName().equals(columns[i])){
+                        placeholders.append(columns[i] + delimeter);
+                        resultFields.add(col);
+                        break;
+                    }
+                }
+
+            }
+            //System.out.println(placeholders.toString());
+            pstmt = conn.prepareStatement("select " + placeholders.toString() + " from " + entityName);
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -113,7 +129,7 @@ public class Metamodel<T> {
     }
 
     public List<ColumnField> getColumns(){
-        List<ColumnField> columnFields = new ArrayList<>();
+        //List<ColumnField> columnFields = new ArrayList<>();
         Field[] fields = clazz.getDeclaredFields();
         for (Field field: fields){
             Column column = field.getAnnotation(Column.class);
@@ -172,12 +188,16 @@ public class Metamodel<T> {
                 // usually primary key is integer
                 int pk = rs.getInt(primaryKey.getColumnName());
                 setPrimaryKey.invoke(result,pk);
-            } catch (InvocationTargetException e) {
-                e.printStackTrace();
+            } catch (InvocationTargetException | SQLException e) {
+                    // have to add nothing here in the sqlException to fix an error
+                //    System.out.println("is this where i have a problem?");
+            //    e.printStackTrace();
             }
 
+            //System.out.println(resultFields.size());
             // now the columns
-            for(ColumnField col: columnFields){
+            for(ColumnField col: resultFields){
+            //    System.out.println("Col in result " + col);
                 char[] charCol = col.getName().toCharArray();
                 charCol[0] = Character.toUpperCase(charCol[0]);
                 String tempString = "set" + String.valueOf(charCol);
@@ -185,7 +205,6 @@ public class Metamodel<T> {
 
                 // the types could be different for different columns
                 Class<?> type = col.getType();
-
                 // just using the most used ones I think of.  I also added time since we have used
                 // it a couple times in demos
                 if(type == String.class){
