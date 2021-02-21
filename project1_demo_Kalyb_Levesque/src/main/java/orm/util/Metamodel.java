@@ -5,6 +5,7 @@ import orm.annotations.Entity;
 import orm.annotations.Id;
 import orm.annotations.JoinColumn;
 import orm.exceptions.SelectException;
+import orm.exceptions.WhereClauseException;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -52,6 +53,11 @@ public class Metamodel<T> {
         return clazz.getSimpleName();
     }
 
+    /**
+     *  the select statement where I can take any number of strings, even no strings
+     * @param columns  can have any number of strings
+     * @return returns this object, but now it has changed fields like the prepared statement
+     */
     public Metamodel selection(String... columns){
         pstmt = null; // to make sure any previous things dont mess it up
         resultFields.clear();
@@ -116,6 +122,99 @@ public class Metamodel<T> {
         }
         return results;
     }
+
+    public Metamodel<T> where(String col, WhereConditions condition, String logic, String compareWith) throws SQLException, WhereClauseException {
+
+        /*
+            do some validation before starting the actual where clause
+         */
+        if(pstmt.toString().contains("where")){
+            throw new WhereClauseException("cannot have two where clauses! use something else like 'and' or  'or'");
+        }
+        // added a where to the prepared statement
+        pstmt = conn.prepareStatement(pstmt.toString() + " where ");
+        ColumnField column = null;
+
+        String ps = pstmt.toString() + logic;
+
+        switch (condition){
+            case EQUALS:
+                    pstmt = conn.prepareStatement(ps + col + " = ?");
+                    // find the corresponding column is the list of columns
+                    for(ColumnField c : columnFields){
+                        if(c.getColumnName().equals(col)){
+                            column = c;
+                            break;
+                        }
+                    }
+                    break;
+            case LESS_THAN:
+                pstmt = conn.prepareStatement(ps + col + " < ?");
+                for(ColumnField c : columnFields){
+                    if(c.getColumnName().equals(col)){
+                        column = c;
+                        break;
+                    }
+                }
+                break;
+            case NOT_EQUALS:
+                pstmt = conn.prepareStatement(ps + col + " <> ?");
+
+                for(ColumnField c : columnFields){
+                    if(c.getColumnName().equals(col)){
+                        column = c;
+                        break;
+                    }
+                }
+                break;
+            case GREATER_THAN:
+                pstmt = conn.prepareStatement(ps + col + " > ?");
+
+                for(ColumnField c : columnFields){
+                    if(c.getColumnName().equals(col)){
+                        column = c;
+                        break;
+                    }
+                }
+                break;
+            case LESS_THAN_OREQUAL:
+                pstmt = conn.prepareStatement(ps + col + " <= ?");
+
+                for(ColumnField c : columnFields){
+                    if(c.getColumnName().equals(col)){
+                        column = c;
+                        break;
+                    }
+                }
+                break;
+            case GREATER_THAN_OREQUAL:
+                pstmt = conn.prepareStatement(ps + col + " >= ?");
+
+                for(ColumnField c : columnFields){
+                    if(c.getColumnName().equals(col)){
+                        column = c;
+                        break;
+                    }
+                }
+                break;
+            default:
+                // maybe add an excpetion here later for someone not adding one of the above
+        }
+
+        Class<?> type = column.getType();
+
+        if(type == String.class){
+            pstmt.setString(1,compareWith);
+        }
+        else if(type == int.class){
+            pstmt.setInt(1,Integer.parseInt(compareWith));
+        }
+        else if(type == double.class){
+            pstmt.setDouble(1,Double.parseDouble(compareWith));
+        }
+        return this;
+    }
+
 
     public IdField getPrimaryKey(){
         Field[] fields = clazz.getDeclaredFields();

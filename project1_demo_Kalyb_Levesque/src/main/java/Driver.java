@@ -1,4 +1,5 @@
 import orm.exceptions.SelectException;
+import orm.exceptions.WhereClauseException;
 import orm.model.User;
 import orm.repos.Repo;
 import orm.util.*;
@@ -43,16 +44,18 @@ public class Driver {
 
         // try to run the select statement with the strings passed in for column names
         try {
-            resultSelection = user.selection("last_name").validateAndRunSelection();
-        } catch (SelectException e) {
+            resultSelection = user.selection("last_name").where("first_name",WhereConditions.EQUALS,"","Kalyb").validateAndRunSelection();
+        } catch (SelectException | WhereClauseException e) {
             e.printStackTrace();
         }
         // get a reference to the user object model
         // then when you remove the object from the list of objects you can assign the
         // reference and use it to access the get methods
         User u;
+
         for(int i = 0; i < resultSelection.size(); i++){
             u = (User) resultSelection.remove(i);
+            System.out.println(u);
         //    System.out.println(u.getEmailAddress());
         //    System.out.println(u.getLastName() + " " + u.getId());
         }
