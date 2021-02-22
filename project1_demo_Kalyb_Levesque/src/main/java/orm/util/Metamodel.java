@@ -14,6 +14,10 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * this will be a class used to facilitate database calls and operations
+ * @param <T> generic type of objects to be determined at runtime
+ */
 public class Metamodel<T> {
     private Class <T> clazz;
     private IdField primaryKeyField;
@@ -27,6 +31,11 @@ public class Metamodel<T> {
 
     private ArrayList<Integer> updateFields; // needed another arrayList for update later
 
+    /**
+     * when metamodel is called initialize a lot of the fields that are gonna be used
+     * @param clazz pass in a class to be determined at runtime
+     * @param connectionPool pass in the pool of connections
+     */
     public Metamodel(Class<T> clazz,ConnectionPooling connectionPool){
         this.clazz = clazz;
         this.columnFields = new LinkedList<>();
@@ -99,7 +108,11 @@ public class Metamodel<T> {
         return this;
     }
 
-    // this method is used to validate and execute
+    /**
+     *  this method is used to validate and execute the select statement
+     * @return returns an arrayList of object decided at runtime.  to hold the full result set
+     * @throws SelectException if something goes wrong with the select run a custom exception for it
+     */
     public ArrayList<T> validateAndRunSelection() throws SelectException {
         // check if it is a select statement
         if(!pstmt.toString().startsWith("select")){
@@ -116,6 +129,15 @@ public class Metamodel<T> {
         return results;
     }
 
+    /**
+     *  the beginning of the where clause
+     * @param col holds the colomn name for which column of the table to use
+     * @param condition  some sort of condition with which to compare the column name and the provided string
+     * @param compareWith the string being looked for in the specified column
+     * @return returns this metamodel with the updated information
+     * @throws WhereClauseException  throws custom exception if where clause is attempted more than once
+     * @throws SQLException generic sql exception incase anything goes wrong there
+     */
     public Metamodel<T> initialWhere(String col, WhereConditions condition, String compareWith) throws WhereClauseException, SQLException {
 
         /*
@@ -129,6 +151,16 @@ public class Metamodel<T> {
         // the initial where clause needs no additional logic
         return where(col,condition,compareWith);
     }
+
+    /**
+     *
+     * @param col holds the colomn name for which column of the table to use
+     * @param condition  some sort of condition with which to compare the column name and the provided string
+     * @param compareWith the string being looked for in the specified column
+     * @return returns this metamodel with the updated information
+     * @throws WhereClauseException  throws custom exception if where clause is attempted more than once
+     * @throws SQLException generic sql exception incase anything goes wrong there
+     */
     public Metamodel<T> where(String col, WhereConditions condition, String compareWith) throws SQLException, WhereClauseException {
          ColumnField column = null;
 
@@ -211,11 +243,16 @@ public class Metamodel<T> {
         }
         return this;
     }
+
     /**
-     * add the and logic at the end of the statement if there is a where clause already inside the statement
-     * @return returns the object
-     * @throws WhereClauseException  in case the where clause has an issue
-     * @throws SQLException because i am reassigning the prepared statement this is needed
+     *
+     *  the beginning of the where clause
+     * @param col holds the colomn name for which column of the table to use
+     * @param condition  some sort of condition with which to compare the column name and the provided string
+     * @param compareWith the string being looked for in the specified column
+     * @return returns this metamodel with the updated information
+     * @throws WhereClauseException  throws custom exception if where clause is attempted more than once
+     * @throws SQLException generic sql exception incase anything goes wrong there
      */
     public Metamodel<T> and(String col, WhereConditions condition, String compareWith) throws WhereClauseException, SQLException {
        if(!pstmt.toString().contains("where")){
@@ -225,6 +262,16 @@ public class Metamodel<T> {
        pstmt = conn.prepareStatement(pstmt.toString() + " and ");
         return where(col, condition,compareWith);
     }
+
+    /**
+     *  the beginning of the where clause
+     * @param col holds the colomn name for which column of the table to use
+     * @param condition  some sort of condition with which to compare the column name and the provided string
+     * @param compareWith the string being looked for in the specified column
+     * @return returns this metamodel with the updated information
+     * @throws WhereClauseException  throws custom exception if where clause is attempted more than once
+     * @throws SQLException generic sql exception incase anything goes wrong there
+     */
     public Metamodel<T> or(String col, WhereConditions condition, String compareWith) throws SQLException, WhereClauseException {
         if(!pstmt.toString().contains("where")){
             throw new WhereClauseException("cannot call and if no where clause");
@@ -233,6 +280,11 @@ public class Metamodel<T> {
         return where(col,condition, compareWith);
     }
 
+    /**
+     *
+     * @param columns any number of columns can be inserted this method takes all the column names NOT the values
+     * @return returns the metamodel with the updated information.
+     */
     public Metamodel<T> insertion(String... columns){
         pstmt = null;
         resultFields.clear();
@@ -268,6 +320,13 @@ public class Metamodel<T> {
         }
         return this;
     }
+
+    /**
+     *
+     * @param recordValues any number of strings can be passed in to give values to insert into a table
+     * @return
+     * @throws InsertionException  custom insert exception incase something happpens
+     */
     public Metamodel<T> insertionValues(String... recordValues) throws InsertionException {
         if(recordValues.length != resultFields.size()){
             throw new InsertionException();
@@ -309,6 +368,11 @@ public class Metamodel<T> {
         return this;
     }
 
+    /**
+     * validated and runs the insertions command from the previous commands that would be used
+     * @throws InsertionException throws a exception of there is some problem with being able to run this method
+     * @throws SQLException standard sql exception for the executeUpdate statement
+     */
     public void validateAndRunInsertion() throws InsertionException, SQLException {
         if(!pstmt.toString().startsWith("insert")){
             throw new InsertionException("validation and running happends after the insert command!!");
@@ -398,6 +462,13 @@ public class Metamodel<T> {
         return this;
     }
 
+    /**
+     *
+     * @param values any number of strings can be passed in for values to replace (update) existing records
+     * @return return this metamodel
+     * @throws UpdateException throw custom exception of something is called in the wrong order or incorrectly
+     * @throws SQLException standard sql exception so as to run executeUpdate
+     */
     public Metamodel<T> setValues(String...values) throws UpdateException, SQLException {
         String tempPSTMT = pstmt.toString();
 
@@ -438,6 +509,11 @@ public class Metamodel<T> {
         return this;
     }
 
+    /**
+     *
+     * @throws UpdateException custom exception in order to make sure it is being run in the correct order, etc
+     * @throws SQLException stand exception in order to run executeUpdate
+     */
     public void validateAndRunUpdate() throws UpdateException, SQLException {
         if(!pstmt.toString().startsWith("update")){
             throw new UpdateException("can only be called after update which will also need a set");
@@ -485,6 +561,11 @@ public class Metamodel<T> {
         return foreignKeyFields;
     }
 
+    /**
+     * find method of a generic class by using the fieldname passed in
+     * @param fieldName if the method has the same name as the fieldName passed in return it
+     * @return returns a Method of a generic type
+     */
     private Method getMethodUsingFieldName(String fieldName){
         // go through all the methods in the model and try to find one that has
         // the same name as the one passed in
@@ -497,6 +578,15 @@ public class Metamodel<T> {
         return null;
     }
 
+    /**
+     *
+     * @param rs  the resultSet passed  in that will be parsed
+     * @return return an arrayList mapping the results
+     * @throws SQLException     the multitude of exceptions used in order to use sql commands, invoke generic methods, etc
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     * @throws InvocationTargetException
+     */
     private ArrayList<T> mapResultSet(ResultSet rs) throws SQLException, IllegalAccessException, InstantiationException, InvocationTargetException {
         T result;
         IdField primaryKey = getPrimaryKey();
