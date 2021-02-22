@@ -12,6 +12,7 @@ public class IdField {
         if(field.getAnnotation(Id.class) == null){
             throw new IllegalStateException("Cannot create IdField object! Provided field, " + getName() + "is not annotated with @Id");
         }
+        this.field = field;
     }
 
     public String getName(){
