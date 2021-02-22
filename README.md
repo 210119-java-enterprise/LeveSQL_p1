@@ -1,4 +1,11 @@
 # LeveSQL_p1
+
+This ORM implementation does basic CRUD and where clauses.  The user will have to set up a couple things, for example the user can insert into a table but the user will have to go to an IDE for databases to create the table. 
+
+
+Further steps are stated below:
+
+
 one of the first things needed is going to be properties taken from a .properties file
 so the first thing will be initializing the properties then trying to load the properties from the file.  the user will have to give a file path to where the .properties file is located.
 
