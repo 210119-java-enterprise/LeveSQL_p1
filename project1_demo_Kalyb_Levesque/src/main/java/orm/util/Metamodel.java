@@ -4,10 +4,7 @@ import orm.annotations.Column;
 import orm.annotations.Entity;
 import orm.annotations.Id;
 import orm.annotations.JoinColumn;
-import orm.exceptions.DeleteException;
-import orm.exceptions.InsertionException;
-import orm.exceptions.SelectException;
-import orm.exceptions.WhereClauseException;
+import orm.exceptions.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -16,7 +13,6 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.locks.Condition;
 
 public class Metamodel<T> {
     private Class <T> clazz;
@@ -29,14 +25,7 @@ public class Metamodel<T> {
     private PreparedStatement pstmt;  // made here so i dont have to pass it in as a varaible every time
     private Connection conn; // pass in the connection to the metamodel class
 
-//    public static <T> Metamodel<T> of(Class<T> clazz){
-//        if (clazz.getAnnotation(Entity.class) == null) {
-//            throw new IllegalStateException("Cannot create Metamodel object! Provided class, " + clazz.getName()
-//                    + "is not annotated with @Entity");
-//        }
-//            return new Metamodel<>(clazz);
-//
-//    }
+    private ArrayList<Integer> updateFields; // needed another arrayList for update later
 
     public Metamodel(Class<T> clazz,ConnectionPooling connectionPool){
         this.clazz = clazz;
@@ -46,6 +35,7 @@ public class Metamodel<T> {
         this.foreignKeyFields = new LinkedList<>();
         this.methods = clazz.getMethods();
         this.conn = connectionPool.getConnection();
+        updateFields = new ArrayList<>();
     }
 
     public String getClassName(){
@@ -319,7 +309,7 @@ public class Metamodel<T> {
         return this;
     }
 
-    public int validateAndRunInsertion() throws InsertionException, SQLException {
+    public void validateAndRunInsertion() throws InsertionException, SQLException {
         if(!pstmt.toString().startsWith("insert")){
             throw new InsertionException("validation and running happends after the insert command!!");
         }
@@ -327,7 +317,7 @@ public class Metamodel<T> {
         // just wanna see whats in there
         System.out.println(pstmtString);
         pstmt = conn.prepareStatement(pstmtString.substring(0, pstmtString.length()-2));
-        return pstmt.executeUpdate();
+        pstmt.executeUpdate();
     }
 
     /**
@@ -345,11 +335,115 @@ public class Metamodel<T> {
 
         return this;
     }
-    public int validateAndRunDeletion() throws DeleteException, SQLException {
+
+    /**
+     *
+     * @throws DeleteException custom exception for delete statements
+     * @throws SQLException default sql exception
+     */
+    public void validateAndRunDeletion() throws DeleteException, SQLException {
         if(!pstmt.toString().startsWith("delete")){
             throw new DeleteException("to run the delete command you must have delete first in the statement");
         }
-        return pstmt.executeUpdate();
+        pstmt.executeUpdate();
+    }
+
+    /**
+     *  this gets the columns that the user wants to replace another method will have to be used later to replace
+     *  with actual values
+     * @return return this with the new updated information
+     */
+    public Metamodel<T> updating(String... columns) throws SQLException, UpdateException {
+
+        if(columns.length == 0){
+            throw new UpdateException("You need at least 1 thing to update you cannot have an empty update");
+        }
+
+        pstmt = null;
+
+        resultFields.clear();
+        updateFields.clear();
+        Entity entity = clazz.getAnnotation(Entity.class);
+        String entityName = entity.tableName();
+
+        int counter = 0;
+       // pstmt = conn.prepareStatement("update " + entityName + " set ");
+        ColumnField field = null;
+        for(String c: columns){
+            // find the column associated with the string passed in
+            for(ColumnField col: columnFields){
+                if(col.getColumnName().equals(c)){
+                    field = col;
+                    break;
+                }
+            }
+            if(field != null){
+                resultFields.add(field);
+            }
+            else{
+                // used later to skip over some null values
+                updateFields.add(counter);
+            }
+            counter++;
+
+        }
+
+        StringBuilder tempString = new StringBuilder("update " + entityName + " set ");
+
+        for(ColumnField col: resultFields){
+            tempString.append(col.getColumnName());
+            tempString.append(" = ?, ");
+        }
+        pstmt = conn.prepareStatement(tempString.substring(0,tempString.length()-2));
+        return this;
+    }
+
+    public Metamodel<T> setValues(String...values) throws UpdateException, SQLException {
+        String tempPSTMT = pstmt.toString();
+
+        if(!tempPSTMT.startsWith("update")){
+            throw new UpdateException("set has to be called after an update");
+        }
+
+        ArrayList<String> columnValues = new ArrayList<>();
+
+        // skip over the ones where there was a null in the updating method
+
+        System.out.println(values.length);
+        for(int i = 0; i < values.length; i++){
+            //System.out.println("what is this value: " + values[i]);
+            if(updateFields.contains(i)){
+                System.out.println( "How many times this get run? " + i);
+                continue;
+            }
+            System.out.println(values[i]);
+            columnValues.add(values[i]);
+        }
+
+        // now that you have the values
+        for(int i = 0; i < resultFields.size(); i++){
+            ColumnField field = resultFields.get(i);
+            Class<?> type = field.getType();
+
+            if(type == String.class){
+                pstmt.setString(i+1,columnValues.get(i));
+            }
+            else if(type == int.class){
+                pstmt.setInt(i+1,Integer.parseInt(columnValues.get(i)));
+            }
+            else if(type == double.class){
+                pstmt.setDouble(i+1, Double.parseDouble(columnValues.get(i)));
+            }
+        }
+        return this;
+    }
+
+    public void validateAndRunUpdate() throws UpdateException, SQLException {
+        if(!pstmt.toString().startsWith("update")){
+            throw new UpdateException("can only be called after update which will also need a set");
+        }
+        System.out.println(pstmt.toString());
+        pstmt.executeUpdate();
     }
 
     public IdField getPrimaryKey(){

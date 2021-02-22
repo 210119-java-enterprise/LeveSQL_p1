@@ -1,7 +1,4 @@
-import orm.exceptions.DeleteException;
-import orm.exceptions.InsertionException;
-import orm.exceptions.SelectException;
-import orm.exceptions.WhereClauseException;
+import orm.exceptions.*;
 import orm.model.User;
 import orm.repos.Repo;
 import orm.util.*;
@@ -45,21 +42,30 @@ public class Driver {
         ArrayList resultSelection = new ArrayList<>();
 
 
-        try {
-            user.insertion("first_name", "last_name").insertionValues("testing","123").validateAndRunInsertion();
-        } catch (InsertionException e) {
-            e.printStackTrace();
-        }
-        try {
-            user.deletion().initialWhere("first_name",WhereConditions.EQUALS, "testing").validateAndRunDeletion();
-        } catch (WhereClauseException | DeleteException e) {
-            e.printStackTrace();
-        }
-        try {
-            resultSelection = user.selection().validateAndRunSelection();
-        } catch (SelectException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            user.insertion("first_name", "last_name").insertionValues("testing","123").validateAndRunInsertion();
+//        } catch (InsertionException e) {
+//            e.printStackTrace();
+//        }
+//        try {
+//            user.deletion().initialWhere("first_name",WhereConditions.EQUALS, "testing").validateAndRunDeletion();
+//        } catch (DeleteException e) {
+//            e.printStackTrace();
+//        } catch (WhereClauseException e) {
+//            e.printStackTrace();
+//        }
+//
+//        try {
+//            user.updating("first_name").setValues("blah").initialWhere("first_name",WhereConditions.EQUALS,"testing").validateAndRunUpdate();
+//        } catch (UpdateException | WhereClauseException e) {
+//            e.printStackTrace();
+//        }
+//        try {
+//
+//            resultSelection = user.selection().validateAndRunSelection();
+//        } catch (SelectException e) {
+//            e.printStackTrace();
+//        }
 
         // try to run the select statement with the strings passed in for column names
 //        try {
